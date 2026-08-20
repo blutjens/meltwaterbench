@@ -1,0 +1,102 @@
+# data_v1_4 change log (wrt. data_v1_3):
+#  Implements a stratified data split across time instead of a random split across time.
+
+# environment/computational parameters
+seed: 42
+device: 'gpu' # cpu or gpu
+num_workers: 22
+use_deterministic_algorithms: True # Set torch layers to deterministic or raises error
+warn_only: True # warn_only for using deterministic algorithms; 
+
+# debugging and logging
+verbose: True
+path_experiment: './runs/random_forest/data_v1_4' # Path to current experiment
+path_wandb: './runs/random_forest/data_v1_4' # Store wandb logs
+path_checkpoints: '/home/gridsan/lutjens/hrmelt/runs/random_forest/data_v1_4/checkpoints/ratio_020_mse_v05' # Store model checkpoints
+path_sweep: './runs/random_forest/data_v1_4/sweep' # If train.py is run with --sweep, the wandb and checkpoints will be stored in subfolders of this directory
+path_sweep_cfg: './runs/random_forest/data_v1_4/config/sweep.yaml' # Path to hyperparameter sweep config yaml. Only used if args.sweep == True
+path_predictions: './runs/random_forest/data_v1_4/predictions' # Store model predictions
+path_predictions_random_forest: './runs/random_forest/data_v1_4/predictions'
+path_deploy: '/home/gridsan/lutjens/EarthIntelligence_shared/datasets/hrmelt/interim/runs/random_forest/data_v1_4/deploy/' # Store model predictions for every single day in target range
+path_eval: './runs/random_forest/data_v1_4/eval_during_training' # Stores temporary predictions during training; path is overwritten if sweep=True
+model_key: 'random_forest' # This should match the hrmelt/models/<model_key>/.. ; used for reusing train.py, etc. between models
+data_key: 'data_v1_4'
+
+# dataset parameters
+# data_root: '/mnt/c/Users/Bjoern/code/hrmelt/data/raw/reprojected_100m/'
+# data_root: '/Users/bjoern/data/hrmelt/meltwaterbench/'
+data_root: '/home/gridsan/lutjens/EarthIntelligence_shared/datasets/hrmelt/'
+filetype: '.tif'
+# Change this parameter to create new splits from 
+split_cfg: 'csv' # Axis to split the dataset. 
+  # 'day' will create a random across every day, using all complete sets of  
+  # 'csv' will use .csv files that contain the train, val, test image filenames
+  # 'stratified_time' will create a train,val,test split with approx. equal number of images in each month
+create_csv_w_split_cfg: False # If True and split_cfg != 'csv', this will save and overwrites the created split cfg as a csv
+path_train_split_csv: './runs/random_forest/data_v1_4/config/train.csv' # If split_cfg == 'csv', this path specifies a csv with image filenames used for training
+path_val_split_csv: './runs/random_forest/data_v1_4/config/val.csv' # Image filenames used during validation
+path_test_split_csv: './runs/random_forest/data_v1_4/config/test.csv'  # Image filenames used during test
+path_eval_split_csv: './runs/random_forest/data_v1_4/config/eval.csv' # used to create predictions for wandb
+path_all_split_csv: './runs/random_forest/data_v1_4/config/all.csv' # All filenames (train+val+test)
+path_deploy_split_csv: './runs/random_forest/data_v1_4/config/deploy.csv' # All days for which to run the trained model without any verification.
+val_percent: 0.11 # If split_cfg == 'day', this sets the ratio of dataset that is used for validation. Range is [0,1.]
+test_percent: 0.11
+n_imgs_per_month: 2 # If split_cfg == 'stratified_time', this sets the number of images per month
+check_for_invalid_entries: False # If True and create_csv_w_split_cfg==True, some channels will be checked for invalid entries. This process can take ~5min.
+in_keys: ['pmw', 'mar_wa1', 'time_interpolate_sar']
+in_keys_static: ['dem'] # ['dem', 'landmask']
+in_keys_aux: [] # ['time_month_idx','time_sin','time_cos'] # Input modalities that are not stored as images on file, e.g., time embedding
+# Paths to data variables; relative to data_root
+path_time_interpolate_sar: 'interim/runs/time_interpolate_sar/data_v1_4/predictions/'
+path_pmw: 'raw/Helheim_data/reprojected_100m/PMWv1.0/'
+path_modis_b1: 'raw/Helheim_data/reprojected_100m/MODIS/MOD09GA_b01/'
+path_modis_b2: 'raw/Helheim_data/reprojected_100m/MODIS/MOD09GA_b02/'
+path_mar_wa1: 'raw/Helheim_data/reprojected_100m/MAR/MARv3.14_nearest/WA1/'
+path_melt: 'raw/Helheim_data/reprojected_100m/SAR/S1Xv1.2/HH_PercentMelt/'
+path_melt_reference: 'raw/Helheim_data/reprojected_100m/SAR/S1Xv1.2/HH_PercentMelt/2017_04_05.tif' # Path to a meltwater.tif that is used to save the deploy predictions with the same metadata
+# Paths to static variables
+path_landmask: 'raw/Helheim_data/reprojected_100m/GIMP_Mask/landMask_100m.tif'
+path_dem: 'raw/Helheim_data/reprojected_100m/GrIMP_DEM/dem_100m.tif'
+# The mean and std were calculated on the 370 imgs in the data_v1_4 train set 
+mean_pmw: 206.1035919189453
+mean_modis_b1: 0.6493049127465401 # mean after scaling. todo: calc. correct value on masked modis whole dataset
+mean_modis_b2: 0.5751748354933877 # todo: calc. correct value
+mean_mar_wa1: 0.005986050236970186
+mean_melt: 0.1931522637605667
+mean_dem: 1175.09423828125
+std_pmw: 26.77197265625
+std_modis_b1: 0.3393826722741524 # std. after scaling. todo: calc. correct value
+std_modis_b2: 0.30517456763241924 # todo: calc. correct value
+std_mar_wa1: 0.008952183648943901
+std_melt: 0.3040434420108795
+std_dem: 993.8522338867188
+nodata_modis: -999 # no_data value
+max_modis: 10000 # max value in modis
+max_mar_wa1: 1.
+min_melt: 0. # minimum value of ground-truth meltwater. Used e.g., to clip outputs in predict.py
+max_melt: 1. # maximum value of ground-truth meltwater
+
+# Data transformation and augmentation parameters
+#  GaussianBlur is applied deterministic and smoothes out sharp edges in input
+# If true, calculates GaussianBlur in the collate_fn on GPU otherwise applies GaussianBlur on CPU in dataset.__getitem__()
+use_batch_blur: False
+pmw_GaussianBlur_kernel_size: 45. # Default 1. equals no augmentation
+pmw_GaussianBlur_sigma: 15. # Default 1. equals no augmentation
+mar_wa1_GaussianBlur_kernel_size: 99. # Default 1. equals no augmentation
+mar_wa1_GaussianBlur_sigma: 33. # Default 1. equals no augmentation
+
+dtype: 'float32' # datatype for in-, output and model weights
+
+# training hyperparameters
+img_size: [2863, 1633] # height, width # [512,512]
+out_channels: 1 # Integer number of out_channels
+num_hyperparam_tries: 1 # Number of hyperparameter combinations to try
+subsampled_px_ratio: 0.20 # Ratio of valid pixels sampled per training image
+# For debugging: if set, only iterate over the first N images of each split. null uses all images.
+max_num_train_samples: null
+max_num_val_samples: null
+max_num_test_samples: null
+
+# Evaluation parameters
+prediction_batch_size: 8
+apply_landmask_to_predictions: True

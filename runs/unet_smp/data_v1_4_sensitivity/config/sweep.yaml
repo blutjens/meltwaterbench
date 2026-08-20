@@ -1,0 +1,16 @@
+epochs: [1085] # Running more epochs to make sure bigger models will also train
+batch_size: [8] # Currently not varying over batch size, because I'm unsure how batch norm behaves during validation
+img_size: [[512,512]] # [[32,32], [128,128], [256,256], [512,512]] # height, width
+optimizer: ['adam']
+lr_scheduler: ['CosineAnnealingWarmRestarts']
+encoder_name: ['tu-xception71']
+encoder_weights: ['imagenet']
+decoder_use_batchnorm: [False]
+learning_rate: [0.0001]  # Learning rate
+lr_patience: [100]
+weight_decay: [0.]
+period_wandb_full_scale_im: [10] # To reduce storage on wandb during sweep
+log_inputs_and_targets_to_wandb: [False] # To reduce storage on wandb during sweep
+in_keys: [[]]
+in_keys_static: [['dem']]
+# 3 * 2 * 2 * 2 = 24

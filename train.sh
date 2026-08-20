@@ -3,8 +3,8 @@
 # Throughput script for launching hyperparameter sweep
 
 # Slurm sbatch options. See https://slurm.schedmd.com/archive/slurm-20.02.7/sbatch.html
-#SBATCH --output runs/unet_smp/data_v1_4/sweep/task-%a/task.sh.log
-#SBATCH --array 43-46 # Create job array. E.g., 1-1 for a single job,
+#SBATCH --output runs/unet_smp/data_v1_4_sensitivity/sweep/task-%a/task.sh.log
+#SBATCH --array 9-9 # Create job array. E.g., 1-1 for a single job,
 # 1-4 for four jobs, or 5-8 for the next four jobs starting with task ID 5.
 #SBATCH --gres=gpu:volta:1 # number of GPU cores
 # MIT supercloud std alloc is 8 GPUs and 160 CPU cores. 
@@ -33,7 +33,7 @@ echo Within the current sweep, this is job $TASK_ID_AFTER_OFFSET of $SLURM_ARRAY
 python hrmelt/train.py \
 --parallel \
 --sweep \
---cfg_path 'runs/unet_smp/data_v1_4/config/config.yaml' \
+--cfg_path 'runs/unet_smp/data_v1_4_sensitivity/config/config.yaml' \
 --task_id $TASK_ID_AFTER_OFFSET \
 --num_tasks $SLURM_ARRAY_TASK_COUNT \
 --task_id_offset $SLURM_ARRAY_TASK_OFFSET

@@ -194,6 +194,9 @@ def benchmark_metrics(metrics_fn, model_keys, device, cfg, split='val', return_f
                 # Compute each metric and add to dictionary.
                 # The output of the metrics function is converted into a list of len==batch_size.
                 for metric_key in metrics_fn.keys():
+                    if metric_key == 'MaskedSSIM' and i == 0:
+                        print('INFO: computing MaskedSSIM over full image may cause OOM seg fault.'\
+                              'Disable using periodical_evaluation_include_ssim.')
                     metric_val = metrics_fn[metric_key](input=pred_model, target=targets, mask=targets_mask)
                     metrics[model_key][metric_key].extend(metric_val.cpu().numpy())
 
@@ -393,7 +396,7 @@ def plot_predictions_vs_targets(model_keys, device, cfg, verbose=False, dpi=300,
     return 1
 
 # Plot the predictions for evaluation.
-def plot_meltwater_extent_over_time(model_keys, device, cfg, split='val', plot_errors=False):
+def plot_meltwater_extent_over_time(model_keys, device, cfg, split='val', plot_errors=False, model_labels=None):
     """
     Plot the integrated extent of meltwater, np.sum(meltwater, axis=space), over time for each
       model prediction and target. Creates one plot per year in the validation dataset
@@ -404,6 +407,7 @@ def plot_meltwater_extent_over_time(model_keys, device, cfg, split='val', plot_e
         device torch.device: Device to use for computation
         cfg dict: Config dictionary
         plot_errors bool: If true, plot the error (predictions - targets) instead of the predictions for each model
+        model_labels dict: If not None, should be a dictionary with 'model_key': 'model_label' used in plot legend
     """
     if plot_errors:
         dir_figures = cfg['path_benchmark_figures'] + 'plot_integrated_meltwater_predictions_over_time/'
@@ -493,13 +497,23 @@ def plot_meltwater_extent_over_time(model_keys, device, cfg, split='val', plot_e
 
     # Assign colors to each model_key
     colors = {'unet': 'tab:blue',
-              'time_interpolate_sar': 'tab:olive',
-              'interpolate_mar': 'tab:brown',
-              'linear_dem': 'tab:orange',
-              'deeplabv3': 'tab:red',
-              'unet_smp': 'tab:blue',
-              'threshold_pmw': 'lightgray',
-              }
+            'time_interpolate_sar': 'tab:olive',
+            'interpolate_mar': 'tab:brown',
+            'linear_dem': 'tab:orange',
+            'deeplabv3': 'tab:red',
+            'unet_smp': 'tab:blue',
+            'threshold_pmw': 'lightgray',
+            'random_forest': 'tab:orange',
+            'unet_smp_all': 'tab:blue',
+            'unet_smp_no_dem': 'tab:orange',
+            'unet_smp_no_mar': 'tab:green',
+            'unet_smp_no_pmw': 'tab:red',
+            'unet_smp_no_sar': 'tab:pink',
+            'unet_smp_only_dem': 'tab:orange',
+            'unet_smp_only_mar': 'tab:green',
+            'unet_smp_only_pmw': 'tab:red',
+            'unet_smp_only_sar': 'tab:pink',
+            }
     for model_key in model_keys:
         if model_key not in colors.keys():
             colors[model_key] = 'tab:pink' # plt.cm.Set1.colors[7]
@@ -518,10 +532,12 @@ def plot_meltwater_extent_over_time(model_keys, device, cfg, split='val', plot_e
     df_mon_avg = df.groupby(df.index.month).mean()
     df_mon_avg.index = pd.to_datetime(df_mon_avg.index, format='%m')
     # First, plot targets:
-    axs[0].plot(df_mon_avg.index.month_name(), df_mon_avg.average_meltwater_per_day.values, marker='X', linestyle='-', color='black', label='targets')
+    axs[0].plot(df_mon_avg.index.month_name(), df_mon_avg.average_meltwater_per_day.values, 
+                marker='X', linestyle='-', color='black', label='targets')
     # Plot model predictions
     for m, model in enumerate(model_keys):
-        axs[0].plot(df_mon_avg.index.month_name(), df_mon_avg[f'average_meltwater_per_day_{model}'].values, linestyle='--', color=colors[model], label=model)
+        axs[0].plot(df_mon_avg.index.month_name(), df_mon_avg[f'average_meltwater_per_day_{model}'].values, 
+                    linestyle='--', color=colors[model], label=model_labels[model])
         if m == 0:
             axs[0].set_ylabel('Monthly-averaged meltwater\n fraction per observed pixel', fontsize='large')
             axs[0].set_xlabel('Month', fontsize='large') # Time in YYYY-MM
@@ -553,7 +569,9 @@ def plot_meltwater_extent_over_time(model_keys, device, cfg, split='val', plot_e
             #[ax.plot(df.index[t], df[f'average_meltwater_per_day'].iloc[t], marker='X', linestyle='None', color='black', alpha=alphas[t]) for t in range(n_days)]
             [ax.plot(df_yr.index[t], df_yr[f'average_meltwater_per_day'].iloc[t], marker='X', linestyle='None', color='black', alpha=alphas[t]) for t in range(len(df_yr))]
             #  Plot predictions as lines over time
-            [ax.plot(df_yr.index, df_yr[f'average_meltwater_per_day_{model}'], linestyle='--', markerfacecolor='None', label=model, color=colors[model], alpha=0.6) for m, model in enumerate(model_keys)]
+            [ax.plot(df_yr.index, df_yr[f'average_meltwater_per_day_{model}'], 
+                     linestyle='--', markerfacecolor='None', label=model_labels[model], 
+                     color=colors[model], alpha=0.6) for m, model in enumerate(model_keys)]
             #  Then, plot individual data points where data points over just a few valid pixels are more transparent
             [[ax.plot(df_yr.index[t], df_yr[f'average_meltwater_per_day_{model}'].iloc[t], marker='X', markerfacecolor='None', linestyle='None', alpha=alphas[t], color=colors[model]) for t in range(len(df_yr))] for m, model in enumerate(model_keys)]
         else:
@@ -603,6 +621,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Evaluate the quality of all predictions from different models.')
     parser.add_argument('--parallel', action='store_true', default=False, help='Enable parallel training')
     parser.add_argument('--verbose', type=bool, default=False, help='Set true to print verbose logs')
+    parser.add_argument('--exclude_ssim', action='store_true', help='For debugging w/o ssim as it takes excessive memory')
     parser.add_argument('--data_split', type=str, default='val', help='Split [train, val, or test] for which the'\
                         'benchmark metrics will be calculcated')
     parser.add_argument('--compute_metrics', action='store_true', default=False, help='If true, computes the metrics on all predictions')
@@ -617,6 +636,21 @@ def get_args():
     parser.add_argument('--deeplabv3', action='store_true', default=False, help='Add deeplabv3 to evaluation')
     parser.add_argument('--unet_smp', action='store_true', default=False, help='Add unet_smp to evaluation')
     parser.add_argument('--threshold_pmw', action='store_true', default=False, help='Add threshold_pmw to evaluation')
+    parser.add_argument('--random_forest', action='store_true', default=False, help='Add random_forest to evaluation')
+    parser.add_argument('--unet_smp_all', action='store_true', default=False, help='Add unet_smp_all to evaluation')
+    parser.add_argument('--unet_smp_no_pmw', action='store_true', default=False, help='Add unet_smp_no_pmw to evaluation')
+    parser.add_argument('--unet_smp_no_mar', action='store_true', default=False, help='Add unet_smp_no_mar to evaluation')
+    parser.add_argument('--unet_smp_no_sar', action='store_true', default=False, help='Add unet_smp_no_sar to evaluation')
+    parser.add_argument('--unet_smp_no_dem', action='store_true', default=False, help='Add unet_smp_no_dem to evaluation')
+    parser.add_argument('--unet_smp_only_pmw', action='store_true', default=False, help='Add unet_smp_only_pmw to evaluation')
+    parser.add_argument('--unet_smp_only_mar', action='store_true', default=False, help='Add unet_smp_only_mar to evaluation')
+    parser.add_argument('--unet_smp_only_sar', action='store_true', default=False, help='Add unet_smp_only_sar to evaluation')
+    parser.add_argument('--unet_smp_only_dem', action='store_true', default=False, help='Add unet_smp_only_dem to evaluation')
+    parser.add_argument('--path_benchmark_figures', type=str, default='./references/figures/benchmark/', 
+        help='Directory to store all plots from benchmarking the models')
+    parser.add_argument('--data_root', type=str, 
+        default='/home/gridsan/lutjens/EarthIntelligence_shared/datasets/hrmelt/raw/Helheim_data/reprojected_100m', 
+        help='Directory that acts as data_root')
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -627,7 +661,7 @@ if __name__ == '__main__':
     # Initialize config, mainly with dataset paths
     cfg = {}
     cfg['verbose'] = args.verbose
-    cfg['data_root'] = '/home/gridsan/lutjens/EarthIntelligence_shared/datasets/hrmelt/raw/Helheim_data/reprojected_100m'
+    cfg['data_root'] = args.data_root
     cfg['path_val_split_csv'] = f'./runs/unet/data_v1_4/config/val.csv' # Image filenames used during validation
     cfg['path_test_split_csv'] = f'./runs/unet/data_v1_4/config/test.csv' # Image filenames used during test
     cfg['path_all_split_csv'] = f'./runs/unet/data_v1_4/config/all.csv' # Image filenames used during test
@@ -637,34 +671,82 @@ if __name__ == '__main__':
     cfg['path_landmask'] = 'GIMP_Mask/landMask_100m.tif'
     cfg['dtype'] = 'float32' # datatype for in-, output and model weights
     cfg['normalize_melt'] = False # don't normalize meltwater targets or predictions.
-    cfg['path_benchmark_figures'] = './references/figures/benchmark/' # Store all plots from benchmarking the models
+    cfg['path_benchmark_figures'] =  args.path_benchmark_figures
 
     # Set directories of every model's predictions
     # model_keys = ['interpolate_mar', 'time_interpolate_sar', 'deeplabv3', 'unet']
     # For time: model_keys = ['interpolate_mar', 'unet', 'time_interpolate_sar', 'linear_dem', 'deeplabv3']
     model_keys = []
+    model_labels = {}
     if args.interpolate_mar:
         model_keys.append('interpolate_mar')
+        model_labels['interpolate_mar'] = 'Interpolate MAR'
         cfg['path_predictions_interpolate_mar'] = Path('./runs/interpolate_mar/data_v1_4/predictions/')
     if args.linear_dem:
         model_keys.append('linear_dem')
+        model_labels['linear_dem'] = 'Threshold DEM'
         cfg['path_predictions_linear_dem'] = Path('./runs/linear_dem/data_v1_4/predictions/')
     if args.threshold_pmw:
         model_keys.append('threshold_pmw')
+        model_labels['threshold_pmw'] = 'Threshold PMW'
         cfg['path_predictions_threshold_pmw'] = Path('./runs/threshold_pmw/data_v1_4/predictions/')
     if args.time_interpolate_sar:
         model_keys.append('time_interpolate_sar')
+        model_labels['time_interpolate_sar'] = 'Time-interpolate SAR'
         # cfg['path_predictions_time_interpolate_sar'] = Path('./runs/time_interpolate_sar/data_v1_4/predictions/')
         cfg['path_predictions_time_interpolate_sar'] = Path('/home/gridsan/lutjens/EarthIntelligence_shared/datasets/hrmelt/interim/runs/time_interpolate_sar/data_v1_4/predictions/')
+    if args.random_forest:
+        model_keys.append('random_forest')
+        model_labels['random_forest'] = 'Random Forest'
+        cfg['path_predictions_random_forest'] = Path('./runs/random_forest/data_v1_4/predictions/')
     if args.unet_smp:
         model_keys.append('unet_smp')
+        model_labels['unet_smp'] = 'UNet'
         cfg['path_predictions_unet_smp'] = Path('./runs/unet_smp/data_v1_4/predictions/')
     if args.deeplabv3:
         model_keys.append('deeplabv3')
+        model_labels['deeplabv3'] = 'DeepLabv3+'
         cfg['path_predictions_deeplabv3'] = Path('./runs/deeplabv3/data_v1_4/predictions/')
     if args.unet:
         model_keys.append('unet')
+        model_labels['unet'] = 'vanilla UNet'
         cfg['path_predictions_unet'] = Path('./runs/unet/data_v1_4/predictions/')
+    if args.unet_smp_all:
+        model_keys.append('unet_smp_all')
+        model_labels['unet_smp_all'] = 'UNet all channels'
+        cfg['path_predictions_unet_smp_all'] = Path('./runs/unet_smp/data_v1_4_sensitivity/predictions/')
+    if args.unet_smp_no_pmw:
+        model_keys.append('unet_smp_no_pmw')
+        model_labels['unet_smp_no_pmw'] = 'no PMW'
+        cfg['path_predictions_unet_smp_no_pmw'] = Path('./runs/unet_smp/data_v1_4_sensitivity/no_pmw/predictions/')
+    if args.unet_smp_no_mar:
+        model_keys.append('unet_smp_no_mar')
+        model_labels['unet_smp_no_mar'] = 'no MAR'
+        cfg['path_predictions_unet_smp_no_mar'] = Path('./runs/unet_smp/data_v1_4_sensitivity/no_mar/predictions/')
+    if args.unet_smp_no_sar:
+        model_keys.append('unet_smp_no_sar')
+        model_labels['unet_smp_no_sar'] = 'no SAR'
+        cfg['path_predictions_unet_smp_no_sar'] = Path('./runs/unet_smp/data_v1_4_sensitivity/no_sar/predictions/')
+    if args.unet_smp_no_dem:
+        model_keys.append('unet_smp_no_dem')
+        model_labels['unet_smp_no_dem'] = 'no DEM'
+        cfg['path_predictions_unet_smp_no_dem'] = Path('./runs/unet_smp/data_v1_4_sensitivity/no_dem/predictions/')
+    if args.unet_smp_only_pmw:
+        model_keys.append('unet_smp_only_pmw')
+        model_labels['unet_smp_only_pmw'] = 'only PMW'
+        cfg['path_predictions_unet_smp_only_pmw'] = Path('./runs/unet_smp/data_v1_4_sensitivity/only_pmw/predictions/')
+    if args.unet_smp_only_mar:
+        model_keys.append('unet_smp_only_mar')
+        model_labels['unet_smp_only_mar'] = 'only MAR'
+        cfg['path_predictions_unet_smp_only_mar'] = Path('./runs/unet_smp/data_v1_4_sensitivity/only_mar/predictions/')
+    if args.unet_smp_only_sar:
+        model_keys.append('unet_smp_only_sar')
+        model_labels['unet_smp_only_sar'] = 'only SAR'
+        cfg['path_predictions_unet_smp_only_sar'] = Path('./runs/unet_smp/data_v1_4_sensitivity/only_sar/predictions/')
+    if args.unet_smp_only_dem:
+        model_keys.append('unet_smp_only_dem')
+        model_labels['unet_smp_only_dem'] = 'only DEM'
+        cfg['path_predictions_unet_smp_only_dem'] = Path('./runs/unet_smp/data_v1_4_sensitivity/only_dem/predictions/')
     if not model_keys:
         print('Warning: need to supply at least one model key as command line argument, e.g., --unet. For now, we evaluate only unet.')
         model_keys.append('unet')
@@ -693,6 +775,8 @@ if __name__ == '__main__':
         'MaskedPrecision': MaskedPrecision(reduction='none', threshold=0.1),
         'MaskedRecall': MaskedRecall(reduction='none', threshold=0.1),
     }
+    if args.exclude_ssim and 'MaskedSSIM' in metrics_fn:
+        del metrics_fn['MaskedSSIM']
 
     # Compute all metrics
     if args.compute_metrics:
@@ -705,6 +789,6 @@ if __name__ == '__main__':
         plot_predictions_vs_targets(model_keys, device, cfg, dpi=300, plot_errors=True, split=args.data_split)
 
     if args.plot_meltwater_extent_over_time:
-        plot_meltwater_extent_over_time(model_keys, device, cfg, split=args.data_split)
+        plot_meltwater_extent_over_time(model_keys, device, cfg, split=args.data_split, model_labels=model_labels)
 
     #  For each model, create a plot of unnormalized model input, model prediction, model target, error pred-target

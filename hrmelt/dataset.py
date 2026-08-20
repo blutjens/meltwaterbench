@@ -857,8 +857,8 @@ class HRMeltDataset(Dataset):
                 jan_1st = datetime.datetime.strptime(f'{target_date.year}_01_01', "%Y_%m_%d")
                 day_in_yr = (target_date - jan_1st).days
                 # Convert date to sin and cos that start on Jan 1st and end on Dec 31st
-                time_sin = np.sin(float(day_in_yr)/360. * 2. * np.pi)
-                time_cos = np.cos(float(day_in_yr)/360. * 2. * np.pi)
+                time_sin = np.sin(float(day_in_yr)/365. * 2. * np.pi)
+                time_cos = np.cos(float(day_in_yr)/365. * 2. * np.pi)
                 time_sin = time_sin * torch.ones(melt.shape, dtype=self.dtype)
                 time_cos = time_cos * torch.ones(melt.shape, dtype=self.dtype)
                 inputs[ch_idx:ch_idx+1,...] = time_sin

@@ -113,6 +113,7 @@ eta_min: 0.
 # we implemented this because the validation step while training will take random tiles from the val split.
 # this will lead to a unstable validation metric.
 periodical_evaluation: True
+periodical_evaluation_include_ssim: True
 epochs_between_periodical_evaluation: 10 # period in epochs between evalutions
 epochs_between_checkpoint_save: 100 # period in epochs between saving checkpoints
 starting_epoch: 1 # epochs before starting evaluation

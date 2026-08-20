@@ -1,7 +1,10 @@
+# data_v1_4_sensitivity change log (wrt. data_v1_4):
+#  Holds out SAR, PMW, MAR, or DEM to study sensitivity to each modality
+
 # environment/computational parameters
 seed: 42
-device: 'mps' # 'cpu', 'gpu'
-num_workers: 1
+device: 'gpu' # cpu or gpu
+num_workers: 18
 use_deterministic_algorithms: True # Set torch layers to deterministic or raises error
 warn_only: True # warn_only for using deterministic algorithms; 
 
@@ -10,24 +13,24 @@ verbose: True
 log_weight_histograms: False # If true, wandb will log
   # distribution plots of weights and gradients on every
   # evaluation epoch
-path_experiment: './runs/unet_smp/sample' # Path to current experiment
-path_wandb: './runs/unet_smp/sample' # Store wandb logs
-path_checkpoints: './runs/unet_smp/sample/checkpoints' # Store model checkpoints
-path_sweep: './runs/unet_smp/sample/sweep' # If train.py is run with --sweep, the wandb and checkpoints will be stored in subfolders of this directory
-path_sweep_cfg: './runs/unet_smp/sample/config/sweep.yaml' # Path to hyperparameter sweep config yaml. Only used if args.sweep == True
-path_predictions: './runs/unet_smp/sample/predictions' # Store model predictions
-path_predictions_unet_smp: './runs/unet_smp/sample/predictions'
-path_deploy: '/runs/unet_smp/sample/deploy/'
-path_eval: './runs/unet_smp/sample/eval_during_training' # Stores temporary predictions during training; path is overwritten if sweep=True
+path_experiment: './runs/unet_smp/data_v1_4_sensitivity' # Path to current experiment
+path_wandb: './runs/unet_smp/data_v1_4_sensitivity' # Store wandb logs
+path_checkpoints: './runs/unet_smp/data_v1_4_sensitivity/checkpoints' # Store model checkpoints
+path_sweep: './runs/unet_smp/data_v1_4_sensitivity/sweep' # If train.py is run with --sweep, the wandb and checkpoints will be stored in subfolders of this directory
+path_sweep_cfg: './runs/unet_smp/data_v1_4_sensitivity/config/sweep.yaml' # Path to hyperparameter sweep config yaml. Only used if args.sweep == True
+path_predictions: './runs/unet_smp/data_v1_4_sensitivity/only_pmw/predictions' # Store model predictions
+path_predictions_unet_smp: './runs/unet_smp/data_v1_4_sensitivity/only_pmw/predictions'
+path_deploy: '/home/gridsan/lutjens/EarthIntelligence_shared/datasets/hrmelt/interim/runs/unet_smp/data_v1_4_sensitivity/deploy/' # Store model predictions for every single day in target range
+path_eval: './runs/unet_smp/data_v1_4_sensitivity/eval_during_training' # Stores temporary predictions during training; path is overwritten if sweep=True
 model_key: 'unet_smp' # This should match the hrmelt/models/<model_key>/.. ; used for reusing train.py, etc. between models
-data_key: 'sample'
+data_key: 'data_v1_4_sensitivity'
 
 # wandb logging
 wandb_entity: 'blutjens' # If null, wandb will use the default entity
-wandb_project_name: 'hrmelt-unet_smp-sample'
+wandb_project_name: 'hrmelt-unet_smp-data_v1_4_sensitivity'
 add_wandb_id_to_ckpt_filename: False # If True, the wandb run id will be added to the checkpoint filename when saving the 
   # model weights. By default this is turned off to avoid expansive models stored to disk.
-period_wandb_full_scale_im: 10 # period in between every full-scale evaluation to display 
+period_wandb_full_scale_im: 10 # period in between every full-scale evaluation to should display 
   # associated full-scale images in wandb. For example, with epochs_between_periodical_evaluation=10, 
   # period_wandb_full_scale_im=5, and starting_epoch=1 images would be logged on epoch 1, 51, 101, 151, .... 
   # If not set, defaults to 1. This parameter exists to reduce storage on wandb.
@@ -35,7 +38,8 @@ log_inputs_and_targets_to_wandb: True # If True, input, targets will be logged t
   # during training. This is useful for debugging, but will increase the amount of data stored on wandb.
 
 # dataset parameters
-data_root: './data/'
+# data_root: '/mnt/c/Users/Bjoern/code/hrmelt/data/raw/reprojected_100m/'
+data_root: '/home/gridsan/lutjens/EarthIntelligence_shared/datasets/hrmelt/'
 filetype: '.tif'
 # Change this parameter to create new splits from 
 split_cfg: 'csv' # Axis to split the dataset. 
@@ -43,30 +47,31 @@ split_cfg: 'csv' # Axis to split the dataset.
   # 'csv' will use .csv files that contain the train, val, test image filenames
   # 'stratified_time' will create a train,val,test split with approx. equal number of images in each month
 create_csv_w_split_cfg: False # If True and split_cfg != 'csv', this will save and overwrites the created split cfg as a csv
-path_train_split_csv: './runs/unet_smp/sample/config/train.csv' # If split_cfg == 'csv', this path specifies a csv with image filenames used for training
-path_val_split_csv: './runs/unet_smp/sample/config/val.csv' # Image filenames used during validation
-path_test_split_csv: './runs/unet_smp/sample/config/test.csv'  # Image filenames used during test
-path_eval_split_csv: './runs/unet_smp/sample/config/eval.csv' # used to create predictions for wandb
-path_all_split_csv: './runs/unet_smp/sample/config/all.csv' # All filenames (train+val+test)
-path_deploy_split_csv: './runs/unet_smp/sample/config/deploy.csv' # All days for which to run the trained model without any verification.
+path_train_split_csv: './runs/unet_smp/data_v1_4_sensitivity/config/train.csv' # If split_cfg == 'csv', this path specifies a csv with image filenames used for training
+path_val_split_csv: './runs/unet_smp/data_v1_4_sensitivity/config/val.csv' # Image filenames used during validation
+path_test_split_csv: './runs/unet_smp/data_v1_4_sensitivity/config/test.csv'  # Image filenames used during test
+path_eval_split_csv: './runs/unet_smp/data_v1_4_sensitivity/config/eval.csv' # used to create predictions for wandb
+path_all_split_csv: './runs/unet_smp/data_v1_4_sensitivity/config/all.csv' # All filenames (train+val+test)
+path_deploy_split_csv: './runs/unet_smp/data_v1_4_sensitivity/config/deploy.csv' # All days for which to run the trained model without any verification.
 val_percent: 0.11 # If split_cfg == 'day', this sets the ratio of dataset that is used for validation. Range is [0,1.]
 test_percent: 0.11
 n_imgs_per_month: 2 # If split_cfg == 'stratified_time', this sets the number of images per month
 check_for_invalid_entries: False # If True and create_csv_w_split_cfg==True, some channels will be checked for invalid entries. This process can take ~5min.
-in_keys: ['pmw', 'mar_wa1']
-in_keys_static: ['dem'] # ['dem', 'landmask']
+in_keys: ['pmw'] # ['pmw', 'mar_wa1', 'time_interpolate_sar']
+in_keys_static: [] # ['dem', 'landmask']
 in_keys_aux: [] # ['time_month_idx','time_sin','time_cos'] # Input modalities that are not stored as images on file, e.g., time embedding
 # Paths to data variables; relative to data_root
-path_time_interpolate_sar: 'interim/runs/time_interpolate_sar/sample/predictions/'
-path_pmw: 'raw/Helheim_data/sample/PMW/'
-path_modis_b1: 'raw/Helheim_data/sample/MODIS/MOD09GA_b01/'
-path_modis_b2: 'raw/Helheim_data/sample/MODIS/MOD09GA_b02/'
-path_mar_wa1: 'raw/Helheim_data/sample/MAR/MARv3.12/WA1/'
-path_melt: 'raw/Helheim_data/sample/SAR/S1X/HH_PercentMelt/'
-path_melt_reference: 'raw/Helheim_data/sample/SAR/S1X/HH_PercentMelt/2018_09_10.tif'
-path_landmask: 'raw/Helheim_data/sample/GIMP_Mask/landMask_100m.tif'
-path_dem: 'raw/Helheim_data/sample/GrIMP_DEM/dem_100m.tif'
-# The mean and std were calculated on the 370 imgs in the sample train set 
+path_time_interpolate_sar: 'interim/runs/time_interpolate_sar/data_v1_4/predictions/'
+path_pmw: 'raw/Helheim_data/reprojected_100m/PMWv1.0/'
+path_modis_b1: 'raw/Helheim_data/reprojected_100m/MODIS/MOD09GA_b01/'
+path_modis_b2: 'raw/Helheim_data/reprojected_100m/MODIS/MOD09GA_b02/'
+path_mar_wa1: 'raw/Helheim_data/reprojected_100m/MAR/MARv3.14_nearest/WA1/'
+path_melt: 'raw/Helheim_data/reprojected_100m/SAR/S1Xv1.2/HH_PercentMelt/'
+path_melt_reference: 'raw/Helheim_data/reprojected_100m/SAR/S1Xv1.2/HH_PercentMelt/2017_04_05.tif' # Path to a meltwater.tif that is used to save the deploy predictions with the same metadata
+# Paths to static variables
+path_landmask: 'raw/Helheim_data/reprojected_100m/GIMP_Mask/landMask_100m.tif'
+path_dem: 'raw/Helheim_data/reprojected_100m/GrIMP_DEM/dem_100m.tif'
+# The mean and std were calculated on the 370 imgs in the data_v1_4 train set 
 mean_pmw: 206.1035919189453
 mean_modis_b1: 0.6493049127465401 # mean after scaling. todo: calc. correct value on masked modis whole dataset
 mean_modis_b2: 0.5751748354933877 # todo: calc. correct value
@@ -99,8 +104,8 @@ amp: False # Use mixed precision (only cuda)
 persistent_workers: True
 
 # training hyperparameters
-epochs: 50 # Number of epochs; see comments when using CosineAnnealingWarmRestarts
-batch_size: 2 # Batch size
+epochs: 3 # Number of epochs; see comments when using CosineAnnealingWarmRestarts
+batch_size: 8 # Batch size
 img_size: [512,512] # height, width
 optimizer: 'adam' # Optimization algorithm
 weight_decay: 0.
@@ -108,8 +113,8 @@ loss_function: 'l1' # Loss function, e.g., 'l1' or 'mse'
 activation: 'relu' # unet_smp only has relu implemented
 out_activation: 'sigmoid' # Activation fn in last layer
 out_channels: 1 # Integer number of out_channels
-encoder_name: 'tu-xception71' # 'tu-convnextv2_large','tu-xception71','tu-convnext_tiny'
-encoder_weights: null
+encoder_name: 'tu-xception71' # 'tu-xception71', 'tu-convnext_tiny'
+encoder_weights: 'imagenet'
 encoder_depth: 5
 decoder_use_batchnorm: False
 decoder_interpolation_mode: 'bilinear'
@@ -138,15 +143,17 @@ eta_min: 0. # Minimum learning rate. Default: 0.
 periodical_evaluation: True
 periodical_evaluation_include_ssim: True
 epochs_between_periodical_evaluation: 10 # period in epochs between evalutions
-epochs_between_checkpoint_save: 100 # period in epochs between saving checkpoints
+epochs_between_checkpoint_save: 1 # period in epochs between saving checkpoints
 starting_epoch: 1 # epochs before starting evaluation
 
 # Evaluation parameters
-prediction_batch_size: 2
+prediction_batch_size: 8
 prediction_stride: 480 # Default recommendation during training: prediction_stride = img_size - 2*erode_size
 # 512 - 2*16 = 480
 # Default rec for deploy: 512 - 2*24 = 464 / 2 = 232
 # Default rec for deploy: 512 - 2*32 = 448 / 2 = 224
 # Default rec for deploy: 512 - 2*48 = 416 / 2 = 208
+# Default rec for deploy: 512 - 2*24 = 464 / 4 = 116
+# Default rec for deploy: 512 - 2*24 = 464 / 8 = 58
 erode_size: 16
 apply_landmask_to_predictions: False

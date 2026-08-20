@@ -6,13 +6,25 @@
 **/*.DS_Store
 # Data folders:
 data/*
-!data/raw/Helheim_data/sample/*
+!data/raw/
+data/raw/*
+!data/raw/Helheim_data
+!data/raw/promice_station_data
+data/raw/Helheim_data/*
+data/raw/promice_station_data/*
+!data/raw/Helheim_data/sample
+!data/raw/promice_station_data/day
+data/raw/Helheim_data/sample/*
+data/raw/promice_station_data/day/*
+!data/raw/Helheim_data/sample/*.tif
+!data/raw/promice_station_data/day/*.csv
 # Experiment logs:
 # Exlude any model and experiment model checkpoints, sweep logs, wandb log,  predictions, and evaluation predictions
 runs/*/*/checkpoints/*
 runs/*/*/sweep/*
 runs/*/*/wandb/*
 runs/*/*/predictions/*
+runs/*/*/*/predictions/*
 runs/*/*/deploy/*
 runs/*/*/eval_during_training/*
 ## unet/data_2018_to_20 experiment
@@ -46,7 +58,6 @@ notebooks/exploring_interpolation.ipynb
 notebooks/exploring_deeplabv3.ipynb
 notebooks/explore_gausian_filter_performance.ipynb
 notebooks/example_batch_input.npy
-notebooks/evaluate_on_station_data.ipynb
 notebooks/download_modis_using_gee.ipynb
 notebooks/scripts/check_for_duplicate_s1a_s1b_data.py
 notebooks/scripts/create_deploy_video.py

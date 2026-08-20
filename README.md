@@ -115,6 +115,9 @@ python hrmelt/models/threshold_pmw/predict.py --cfg_path runs/threshold_pmw/data
 # Linear model wrt. digital elevation (linear_dem)
 python hrmelt/predict.py --parallel --cfg_path runs/linear_dem/data_v1_4/config/config.yaml --load='runs/linear_dem/data_v1_4/sweep/task-8/checkpoints/checkpoint_epoch101.pth' --data_split test
 
+# Random forest
+python hrmelt/models/random_forest/predict.py --parallel --cfg_path=runs/random_forest/data_v1_4/config/config.yaml --load=/home/gridsan/lutjens/hrmelt/runs/random_forest/data_v1_4/checkpoints/ratio_020_mse_v05/checkpoint.joblib --data_split test
+
 # Create Deeplabv3 predictions
 python hrmelt/predict.py --parallel --cfg_path='runs/deeplabv3/data_v1_4/config/config.yaml' --load='runs/deeplabv3/data_v1_4/sweep/task-7/checkpoints/checkpoint_epoch991.pth' --data_split test
 
@@ -127,7 +130,7 @@ python hrmelt/predict.py --parallel --cfg_path='runs/unet/data_v1_4/config/confi
 
 #### Benchmark: Compute evaluation metrics for every model
 ```
-python hrmelt/eval/benchmark.py --compute_metrics --batch_size 10 --data_split test --unet_smp --linear_dem --time_interpolate_sar --interpolate_mar --deeplabv3 --threshold_pmw
+python hrmelt/eval/benchmark.py --compute_metrics --batch_size 10 --data_split test --unet_smp --linear_dem --time_interpolate_sar --interpolate_mar --deeplabv3 --threshold_pmw --random_forest
 ```
 
 #### Benchmark: Plot model prediction vs. target for every validaton image
@@ -143,7 +146,7 @@ python hrmelt/eval/benchmark.py --plot_errors_vs_targets --data_split test --une
 #### Benchmark: Plot predicted meltwater extent over time
 ```
 python hrmelt/eval/benchmark.py --plot_meltwater_extent_over_time --data_split test --unet_smp --time_interpolate_sar --interpolate_mar --linear_dem --threshold_pmw
-python hrmelt/eval/benchmark.py --plot_meltwater_extent_over_time --data_split test --unet_smp --deeplabv3
+python hrmelt/eval/benchmark.py --plot_meltwater_extent_over_time --data_split test --unet_smp --deeplabv3 --random_forest
 ```
 
 #### Deployment: Create daily 100m predictions over 2017-23
@@ -177,6 +180,24 @@ python hrmelt/eval/deploy.py --unet_smp --time_interpolate_sar --threshold_pmw -
 python hrmelt/eval/data_variance.py --verbose
 ```
 
+#### Benchmark: Compare to station observations
+```
+notebooks/mevaluate_on_station_data.ipynb
+```
+
+#### Benchmark: Evaluate error over observational gap length
+```
+python notebooks/scripts/accuracy_over_observation_gap.py
+```
+
+#### Benchmark: Perform feature importance analysis
+```
+# Retrain the UNet SMP multiple times using the configs in data_v1_4_sensitivity. Afterwards call predict.py and benchmark.py on each model.
+python hrmelt/train.py --no_wandb --parallel --cfg_path 'runs/unet_smp/data_v1_4_sensitivity/config/config_only_sar.yaml'
+python hrmelt/train.py --no_wandb --parallel --cfg_path 'runs/unet_smp/data_v1_4_sensitivity/config/config_only_mar.yaml'
+...
+```
+
 ## Fit the baseline models
 #### Fit baseline: interpolate_mar
 ```
@@ -191,6 +212,12 @@ python hrmelt/train.py --no_wandb --cfg_path runs/linear_dem/data_v1_4/config/co
 # Second, edit train_linear_dem.sh and kick-off hyperparam sweep
 sbatch train_linear_dem.sh
 # Finally copy the best parameters from wandb into the config.yaml
+```
+
+#### Fit baseline: random_forest
+```
+python hrmelt/models/random_forest/model.py --parallel --cfg_path=runs/random_forest/data_v1_4/config/config.yaml
+# This will save out the best checkpoint
 ```
 
 #### Fit baseline: deeplabv3+
@@ -282,7 +309,6 @@ export HF_DATASETS_OFFLINE=1
 Evaluation kills processing, running out of memory:
 ```
 The torchmetrics implementation of ssim is know to keep too much in memory. On my laptop that crashes the evaluation. Either update torchmetrics, because I think they fixed this issue. Or, increase memory or pass --exclude_ssim to train.py
-
 ```
 
 # Reference
@@ -296,7 +322,3 @@ If this analysis is useful for your analysis please consider citing:
       url = {https://arxiv.org/abs/2512.12142},
 }
 ```
-
-
-
-

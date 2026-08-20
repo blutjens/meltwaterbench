@@ -217,7 +217,13 @@ def train_model(
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min',
                                                      patience=cfg['lr_patience'])
 
-    grad_scaler = torch.amp.GradScaler('cuda', enabled=amp)
+    if amp and device_type != 'cuda':
+        logging.warning(
+            f"AMP requested but device is '{device_type}'; GradScaler is only "
+            "supported on CUDA, so it will be disabled."
+        )
+        amp = False
+    grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
 
     criterion = MaskedLoss(cfg['loss_function'])
     # criterion = nn.CrossEntropyLoss() if model.out_channels > 1 else nn.BCEWithLogitsLoss()
@@ -227,11 +233,13 @@ def train_model(
             'MaskedL1': MaskedLoss('l1', reduction='none'),
             'MaskedMSE': MaskedLoss('mse', reduction='none'),
             'MaskedR2': MaskedR2(reduction='none'),
-            'MaskedSSIM': MaskedSSIM(data_range = (0.,1.), sigma=10., device=device),
             'ValidPx': CountValidPx(reduction='none')
         }
-        if args.exclude_ssim:
-            del metrics_fn['MaskedSSIM']
+    if cfg['periodical_evaluation_include_ssim']:
+        # SSIM computation requires a lot of memory
+        metrics_fn['MaskedSSIM'] = MaskedSSIM(data_range = (0.,1.), sigma=10., device=device)        
+    if args.exclude_ssim and 'MaskedSSIM' in metrics_fn:
+        del metrics_fn['MaskedSSIM']
 
     # Begin training
     for epoch in range(1, epochs + 1):
@@ -245,7 +253,7 @@ def train_model(
                 batch_start = time.time()
                 inputs, targets, targets_mask, meta = batch
                 assert inputs.shape[1] == model.get_in_channels(), \
-                    f'Network has been defined with {model.in_channels} input channels, ' \
+                    f'Network has been defined with {model.get_in_channels()} input channels, ' \
                     f'but loaded images have {inputs.shape[1]} channels. Please check that ' \
                     'the inputs are loaded correctly.'
 
@@ -429,7 +437,6 @@ if __name__ == '__main__':
     # Import cfg
     cfg = yaml.safe_load(open(args.cfg_path, 'r'))
     cfg['path_cfg'] = args.cfg_path
-    cfg['in_channels'] = len(cfg['in_keys']) + len(cfg['in_keys_static']) + len(cfg['in_keys_aux'])
 
     # Init device
     if cfg['device'] == 'gpu':
@@ -460,6 +467,8 @@ if __name__ == '__main__':
     # Initialize hyperparameter sweep
     if args.sweep:
         cfg = init_sweep_config(cfg, cfg['path_sweep_cfg'], args.task_id, args.num_tasks, args.task_id_offset)
+    
+    cfg['in_channels'] = len(cfg['in_keys']) + len(cfg['in_keys_static']) + len(cfg['in_keys_aux'])
 
     if cfg['model_key']=='unet':
         from hrmelt.models.unet.unet_model import UNet

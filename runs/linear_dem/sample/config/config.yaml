@@ -116,6 +116,7 @@ T_mult: 2
 eta_min: 0.
 
 periodical_evaluation: True
+periodical_evaluation_include_ssim: True
 epochs_between_periodical_evaluation: 2
 starting_epoch: 1
 
